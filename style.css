@@ -1,0 +1,156 @@
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+   background: #101214;
+font-family: 'Chakra Petch', Arial, sans-serif;
+color: #e8e6e0;
+user-select: none;}
+
+canvas {
+  position: fixed;
+  inset: 0;
+  display: block;
+
+}
+
+.hidden {display: none !important;}
+#menuScreen, #pauseMenu {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(ellipse at 50% 30%, rgba(38,44,52,.92), rgba(10,12,15,.97));
+}
+
+
+
+
+    .card {
+  width: 340px;
+  padding: 34px 38px 30px;
+  background: rgba(14,17,21,.94);
+  border: 1px solid rgba(255,255,255,.1);
+  text-align: center;
+}
+
+.card h1 {
+  margin: 0;
+  font-family: 'Black Ops One', 'Chakra Petch', sans-serif;
+  font-size: 44px;
+  letter-spacing: 3px;
+  color: #efece4;
+}
+
+.card h2 {
+  margin: 0 0 20px;
+  font-family: 'Black Ops One', 'Chakra Petch', sans-serif;
+  font-size: 28px;
+  letter-spacing: 4px;   
+  color: #efece4;
+}
+ 
+.sub {
+  margin: 4px 0 24px;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: #8d8880;
+}
+
+button {
+  width: 160px;
+  height: 44px;
+  border: 0;
+  background: #d99a3e;
+  color: #17120a;
+  font-family: 'Black Ops One', sans-serif;
+  font-size: 15px;
+  letter-spacing: 3px;
+  cursor: pointer;
+}
+         
+button:hover {background: #eeb257;}
+button:active {transform: translateY(1px);}
+                 
+.keys {
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255,255,255,.08);
+  display: grid;
+gap: 7px;
+text-align: left;
+  font-size: 12.5px;
+  color: #8d8880;
+}
+                 
+.keys div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+                    
+         
+.keys b {
+  min-width: 54px;
+  padding: 2px 8px;
+  background: #1a1f25;
+  border: 1px solid rgba(255,255,255,.12);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #cfc9be;
+  text-align: center;}
+.small {
+  margin: 14px 0 0;
+  font-size: 11.5px;
+  color: #77726a;
+}
+
+#hud {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+    pointer-events: none;
+}
+
+#crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  --gap: 4px;
+}
+
+#crosshair i {
+  position: absolute;
+  background: #46e86e;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.4);
+}
+
+#crosshair .v { width: 2px; height: 7px; left: -1px; }
+#crosshair .h { width: 7px; height: 2px; top: -1px; }
+
+#crosshair .v:nth-child(1) {bottom: var(--gap);}
+#crosshair .v:nth-child(2) {top: var(--gap);}
+#crosshair .h:nth-child(3) {right: var(--gap);}
+#crosshair .h:nth-child(4) {left: var(--gap);}
+
+#tipText {
+  position: absolute;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: #9a958c;
+  opacity: 0;
+  transition: opacity .6s;
+}
+
+#tipText.show {opacity: 1;}
