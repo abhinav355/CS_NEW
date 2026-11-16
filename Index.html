@@ -1,1 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>dustline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
+<link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Chakra+Petch:wght@400;600&display=swap" rel="stylesheet"><link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="menuScreen">
+  <div class="card">
+    <h1>DUSTLINE</h1>
+    <p class="sub">cs style game, still a wip</p>
+
+  <button id="startBtn">PLAY</button>
+
+
+<div class="keys">
+    <div><b>wasd</b> move</div>
+     <div><b>shift</b> walk</div>
+    <div><b>c</b> crouch</div>
+    <div><b>space</b> jump</div>
+    <div><b>esc</b> menu</div>
+    </div></div></div>
+
+<div id="pauseMenu" class="hidden">
+  <div class="card">
+    <h2>PAUSED</h2>
+    <button id="resumeBtn">RESUME</button>
+    <p class="small">or press enter</p>
+  </div>
+</div>
+
+<div id="hud">
+  <div id="crosshair"><i class="v"></i><i class="v"></i><i class="h"></i><i class="h"></i></div>
+  <div id="tipText">wasd move · space jump · esc menu</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module" src="maingame.js"></script>
+
+
+</body>
+</html>
