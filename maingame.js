@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
-console.log('dustline loading... (map update)');
+console.log('dustline loading... (sprint update)');
 
 function getById(id) {
   return document.getElementById(id);
@@ -215,13 +215,13 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.06;
-document.body.appendChild(renderer.domElement);
+ renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.06;
+ document.body.appendChild(renderer.domElement);
 
-let controls = new PointerLockControls(camera, renderer.domElement);
+  let controls = new PointerLockControls(camera, renderer.domElement);
 
-scene.add(new THREE.HemisphereLight(0xbfd6ea, 0x9a8a68, 0.9));
+ scene.add(new THREE.HemisphereLight(0xbfd6ea, 0x9a8a68, 0.9));
 
 let sun = new THREE.DirectionalLight(0xffeecf, 2.3);
 sun.position.set(55, 85, -25);
@@ -312,9 +312,10 @@ function addCrate(x, z, sz, h, y0) {
   if (!y0) y0 = 0;
   let k = sz + '_' + h;
   if (!crateGeos[k]) {
-    crateGeos[k] = new THREE.BoxGeometry(sz, h, sz);
-  }
-  let m = new THREE.Mesh(crateGeos[k], crateMat);
+    
+    
+      crateGeos[k] = new THREE.BoxGeometry(sz, h, sz);}
+   let m = new THREE.Mesh(crateGeos[k], crateMat);
   m.position.set(x, y0 + h / 2, z);
   m.rotation.y = (Math.random() - 0.5) * 0.05;
   m.castShadow = true;
@@ -340,6 +341,10 @@ function addBarrel(x, z, y0) {
   m.castShadow = true;
   m.receiveShadow = true;
   scene.add(m);
+//change the box
+
+
+
   pushWall(x - 0.5, x + 0.5, z - 0.5, z + 0.5, y0, y0 + 1.3);
 }
 
@@ -370,6 +375,47 @@ function addStall(x, z) {
   top.rotation.x = -0.3;
   top.castShadow = true;
   scene.add(top);
+}
+
+let carBodyMat = new THREE.MeshStandardMaterial({ color: 0x5f7183, roughness: 0.55, metalness: 0.3 });
+let carGlassMat = new THREE.MeshStandardMaterial({ color: 0x2c3439, roughness: 0.3, metalness: 0.4 });
+let wheelGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.26, 10);
+let wheelMat = new THREE.MeshStandardMaterial({ color: 0x1d1d1d, roughness: 0.95 });
+
+function addCar(x, z, alongX) {
+  if (x < -40 || x > 40 || z < -40 || z > 40) {
+    console.log('car ended up outside the map, not adding that one');
+    return;
+  }
+  let sx = alongX ? 4.2 : 1.9;
+  let sz = alongX ? 1.9 : 4.2;
+  let body = new THREE.Mesh(new THREE.BoxGeometry(sx, 0.75, sz), carBodyMat);
+  body.position.set(x, 0.72, z);
+  body.castShadow = true;
+  body.receiveShadow = true;
+  scene.add(body);
+  pushWall(x - sx / 2, x + sx / 2, z - sz / 2, z + sz / 2, 0, 1.1);
+
+  let cabX = alongX ? 2.0 : 1.7;
+  let cabZ = alongX ? 1.7 : 2.0;
+  let cab = new THREE.Mesh(new THREE.BoxGeometry(cabX, 0.65, cabZ), carGlassMat);
+  cab.position.set(alongX ? x - 0.4 : x, 1.42, alongX ? z : z - 0.4);
+  cab.castShadow = true;
+  scene.add(cab);
+  pushWall(cab.position.x - cabX / 2, cab.position.x + cabX / 2, cab.position.z - cabZ / 2, cab.position.z + cabZ / 2, 1.1, 1.75);
+
+  for (let i = 0; i < 4; i++) {
+    let w = new THREE.Mesh(wheelGeo, wheelMat);
+    if (alongX) {
+      w.position.set(x + (i < 2 ? -1.35 : 1.35), 0.34, z + (i % 2 ? 0.8 : -0.8));
+      w.rotation.x = Math.PI / 2;
+    } else {
+      w.position.set(x + (i % 2 ? 0.8 : -0.8), 0.34, z + (i < 2 ? -1.35 : 1.35));
+      w.rotation.z = Math.PI / 2;
+    }
+    w.castShadow = true;
+    scene.add(w);
+  }
 }
 
 function addRampX(x0, x1, zc, w, h0, h1) {
@@ -416,16 +462,16 @@ function addCap(x0, z0, x1, z1, topY) {
 function addArch(x0, z0, x1, z1, h) {
   let w = x1 - x0;
   let d = z1 - z0;
-  let hh = h - 2.6;
+  let hh = h - 3.3;
   let m = new THREE.Mesh(
     new THREE.BoxGeometry(w, hh, d),
     makeMat(texs.sandstone, Math.max(w, d) / 3, hh / 3)
   );
-  m.position.set((x0 + x1) / 2, 2.6 + hh / 2, (z0 + z1) / 2);
+  m.position.set((x0 + x1) / 2, 3.3 + hh / 2, (z0 + z1) / 2);
   m.castShadow = true;
   m.receiveShadow = true;
   scene.add(m);
-  pushWall(x0, x1, z0, z1, 2.6, h);
+  pushWall(x0, x1, z0, z1, 3.3, h);
 }
 
 function wallLetter(L, x, y, z, ry) {
@@ -477,8 +523,8 @@ function buildMap() {
   addCap(-46, -46, -44, 46, 7);
   addCap(44, -46, 46, 46, 7);
 
-  addWall(-9, -28, -7, 30, 5, 0, 'sandstone');
-  addCap(-9, -28, -7, 30, 5);
+  addWall(-9, -28, -7, -12, 5, 0, 'sandstone');
+  addCap(-9, -28, -7, -12, 5);
   addWall(7, -28, 9, -21, 5, 0, 'sandstone');
   addWall(7, -17, 9, -14, 5, 0, 'sandstone');
   
@@ -538,7 +584,7 @@ function buildMap() {
   addWall(-14, -12, -7, 30, 5, 0, 'sandstone');
   addCap(-14, -12, -7, 30, 5);
   wallLetter('B', -14.1, 2.3, -20, -Math.PI / 2);
-  addWall(-34, -12, -14, -10, 5, 0, 'sandstone');
+  addWall(-33, -12, -14, -10, 5, 0, 'sandstone');
   addWall(-36, -38, -22, -22, 0.9, 0, 'stone');
   addRampX(-22, -18, -30, 4, 0.9, 0);
   addCrate(-33, -33, 2.4, 1.2, 0.9);
@@ -564,7 +610,7 @@ function buildMap() {
   addCrate(-30, 36, 2.2);
   addCrate(-2, 34, 1.3, 1.3);
 
-  //nov 18 update market row down 
+ //market and stall changed 
   addStall(-20, 42.5);
   addStall(-12.5, 42.5);
   addStall(-5, 42.5);
@@ -577,23 +623,32 @@ function buildMap() {
   addWall(20, 32, 26, 33.2, 1.1, 0, 'stone');
   addBarrel(-24.5, 41);
   addBarrel(30.5, 41.5);
-  addBarrel(31.3, 40.7);
+  addBarrel(31.6, 40.4);
   addBarrel(2, -42);
-  addBarrel(2.7, -41.2);
+  addBarrel(3.1, -40.8);
   addBarrel(-12.5, -41);
-  addBarrel(-11.7, -40.2);
+  addBarrel(-11.3, -39.8);
   addBarrel(20, -42);
   addBarrel(-41, 16);
-  addBarrel(-40.2, 16.8);
+  addBarrel(-39.8, 17.2);
   addBarrel(-41, -30);
-  addBarrel(-40.2, -29.2);
+  addBarrel(-39.8, -28.8);
   addBarrel(42.5, 28);
-  addBarrel(41.8, 28.8);
+  addBarrel(41.3, 29.3);
   addBarrel(40, -36, 1.1);
   addBarrel(31, -38, 1.1);
   addBarrel(-33, -24, 0.9);
   addCrate(-42, -38, 2.2);
   addCrate(-41, 24, 2.0);
+
+  //car in veryyyy wrong ok so change it later but fix it!!!
+  addCar(38, 4, false);
+  addCar(-3, 18, false);
+  addBarrel(41, 2);
+  addBarrel(0.2, 17);
+  addBarrel(33, -25, 1.1);
+  addCrate(-28, -18, 2.2);
+  addCrate(-28, -18, 1.5, 0.75, 1.1);
 
   let peb = new THREE.MeshStandardMaterial({ color: 0x8d887c, roughness: 1 });
   let pebGeo = new THREE.BoxGeometry(0.25, 0.14, 0.25);
@@ -636,6 +691,8 @@ addLamp(-39, 3.2, -4, 6, 16);
 addLamp(-29, 3.6, -30, 5, 20);
 addLamp(36, 3.6, -27, 4, 20);
 addLamp(0, 3.4, 40, 5, 18);
+addLamp(39, 3.2, 24, 5, 16);
+addLamp(0, 3.4, -34, 4, 16);
 
 
 let sfx = (function () {
@@ -661,7 +718,7 @@ let sfx = (function () {
     }
   }
 
-  //sounds ok to me  --tome --(Rs check your notebook)
+  //sounds ok to me -- ok will update next
   function hiss(freq, vol, dur) {
     if (!ctx) return;
     let t = ctx.currentTime;
@@ -684,7 +741,8 @@ let sfx = (function () {
   return {
     boot: boot,
     step: function () { hiss(300 + Math.random() * 150, 0.09, 0.07); },
-    land: function () { hiss(240, 0.2, 0.1); }
+    land: function () { hiss(240, 0.2, 0.1); },
+    slide: function () { hiss(150, 0.22, 0.6); }
   };
 })();
 
@@ -697,7 +755,11 @@ let me = {
   crouch: false,
   eyeY: 1.62,
   bob: 0,
-  walkAcc: 0
+  walkAcc: 0,
+  sliding: false,
+  slideT: 0,
+  slideCd: 0,
+  squash: 1
 };
 
 let keysDown = {};
@@ -762,14 +824,15 @@ function movePlayer(dt) {
   if (keysDown.KeyA) ix -= 1;
   if (keysDown.KeyD) ix += 1;
 
-  let sneaking = keysDown.ShiftLeft || keysDown.ShiftRight;
+  let sprintHeld = keysDown.ShiftLeft || keysDown.ShiftRight;
   me.crouch = keysDown.KeyC ? true : false;
 
   let spd = 5.4;
+  if (sprintHeld && iz > 0) {
+    spd = 7.9;
+  }
   if (me.crouch) {
     spd = spd * 0.34;
-  } else if (sneaking) {
-    spd = spd * 0.45;
   }
 
   camera.getWorldQuaternion(tmpQuat);
@@ -787,10 +850,37 @@ function movePlayer(dt) {
   if (wish.lengthSq() > 0) wish.normalize();
   wish.multiplyScalar(spd);
 
-  let push = me.onFloor ? 12 : 2.5;
-  let k = 1 - Math.exp(-push * dt);
-  me.vel.x += (wish.x - me.vel.x) * k;
-  me.vel.z += (wish.z - me.vel.z) * k;
+  me.slideCd -= dt;
+  if (me.slideCd < 0) me.slideCd = 0;
+
+  let hspdNow = Math.hypot(me.vel.x, me.vel.z);
+  if (me.crouch && sprintHeld && iz > 0 && me.onFloor && !me.sliding && me.slideCd <= 0 && hspdNow > 6.8) {
+    me.sliding = true;
+    me.slideT = 0.85;
+    me.slideCd = 1.4;
+    me.vel.x *= 1.18;
+    me.vel.z *= 1.18;
+    sfx.slide();
+  }
+
+  //slide is just crouch while sprinting, boost + fade so it feels slidey
+  if (me.sliding) {
+    me.slideT -= dt;
+    let keep = Math.exp(-1.4 * dt);
+    me.vel.x *= keep;
+    me.vel.z *= keep;
+    me.vel.x += right.x * ix * 1.6 * dt;
+    me.vel.z += right.z * ix * 1.6 * dt;
+    let hs = Math.hypot(me.vel.x, me.vel.z);
+    if (me.slideT <= 0 || !me.crouch || hs < 3.2 || !me.onFloor) {
+      me.sliding = false;
+    }
+  } else {
+    let push = me.onFloor ? 12 : 2.5;
+    let k = 1 - Math.exp(-push * dt);
+    me.vel.x += (wish.x - me.vel.x) * k;
+    me.vel.z += (wish.z - me.vel.z) * k;
+  }
 
   if (keysDown.Space && me.onFloor) {
     me.vy = 5.9;
@@ -830,8 +920,16 @@ function movePlayer(dt) {
 
   camRig.position.copy(me.pos);
 
-  let eyeWant = me.crouch ? 1.15 : 1.62;
+  let eyeWant = me.sliding ? 0.8 : (me.crouch ? 1.15 : 1.62);
   me.eyeY += (eyeWant - me.eyeY) * (1 - Math.exp(-10 * dt));
+
+  let squashWant = me.sliding ? 0.55 : (me.crouch ? 0.8 : 1);
+  me.squash += (squashWant - me.squash) * (1 - Math.exp(-10 * dt));
+  myLegs.g.scale.y = me.squash;
+
+  let fovWant = me.sliding ? 83 : (sprintHeld && iz > 0 ? 79 : 74);
+  camera.fov += (fovWant - camera.fov) * (1 - Math.exp(-6 * dt));
+  camera.updateProjectionMatrix();
 
   let hspd = Math.hypot(me.vel.x, me.vel.z);
   let bobOff = 0;
@@ -848,7 +946,7 @@ function movePlayer(dt) {
   me.walkAcc += hspd * dt;
   if (me.walkAcc > 2.6 && me.onFloor) {
     me.walkAcc = 0;
-    if (!sneaking && !me.crouch) sfx.step();
+    if (!me.crouch && !me.sliding) sfx.step();
   }
 
   //legs turn with the camera this took me way too long to figre out
