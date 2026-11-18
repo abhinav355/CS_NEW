@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
-console.log('dustline loading...');
+console.log('dustline loading... (map update)');
 
 function getById(id) {
   return document.getElementById(id);
@@ -144,6 +144,14 @@ texs.plaster = makeTex(256, (g, s) => {
   dotNoise(g, s, 300, 0.06, false);
 });
 
+texs.stripes = makeTex(128, (g, s) => {
+  let bw = s / 8;
+  for (let i = 0; i < 8; i++) {
+    g.fillStyle = i % 2 ? '#a63c2a' : '#dfcfae';
+    g.fillRect(i * bw, 0, bw + 1, s);
+  }
+  dotNoise(g, s, 150, 0.12, true);
+});
 texs.sky = makeTex(512, (g, s) => {
   let gr = g.createLinearGradient(0, 0, 0, s);
   gr.addColorStop(0, '#5e93cf');
@@ -315,6 +323,55 @@ function addCrate(x, z, sz, h, y0) {
   pushWall(x - sz / 2, x + sz / 2, z - sz / 2, z + sz / 2, y0, y0 + h);
 }
 
+let barrelMat = new THREE.MeshStandardMaterial({ color: 0x9c3a28, roughness: 0.85, metalness: 0.2 });
+let barrelGeo = null;
+
+function addBarrel(x, z, y0) {
+  if (!y0) y0 = 0;
+  if (x < -43 || x > 43 || z < -43 || z > 43) {
+    console.log('barrel fell out of the map, oh well');
+    return;
+  }
+  if (!barrelGeo) {
+    barrelGeo = new THREE.CylinderGeometry(0.55, 0.55, 1.3, 12);
+  }
+  let m = new THREE.Mesh(barrelGeo, barrelMat);
+  m.position.set(x, y0 + 0.65, z);
+  m.castShadow = true;
+  m.receiveShadow = true;
+  scene.add(m);
+  pushWall(x - 0.5, x + 0.5, z - 0.5, z + 0.5, y0, y0 + 1.3);
+}
+
+let postGeo = new THREE.BoxGeometry(0.14, 2.8, 0.14);
+let postMat = new THREE.MeshStandardMaterial({ color: 0x55412b, roughness: 0.95 });
+
+function addStall(x, z) {
+  if (x < -40 || x > 40) {
+    console.log('stall ended up outside the walls, skipping that one');
+    return;
+  }
+  addWall(x - 1.5, z - 0.7, x + 1.5, z + 0.7, 1.0, 0, 'wood');
+  let posts = [
+    [x - 1.6, z + 1.0, 1],
+    [x + 1.6, z + 1.0, 1],
+    [x - 1.6, z - 0.8, 0.75],
+    [x + 1.6, z - 0.8, 0.75]
+  ];
+  for (let i = 0; i < posts.length; i++) {
+    let p = new THREE.Mesh(postGeo, postMat);
+    p.position.set(posts[i][0], 1.4 * posts[i][2], posts[i][1]);
+    p.scale.y = posts[i][2];
+    p.castShadow = true;
+    scene.add(p);
+  }
+  let top = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.09, 2.2), makeMat(texs.stripes, 2, 1));
+  top.position.set(x, 2.45, z + 0.15);
+  top.rotation.x = -0.3;
+  top.castShadow = true;
+  scene.add(top);
+}
+
 function addRampX(x0, x1, zc, w, h0, h1) {
   let L = x1 - x0;
   let H = h1 - h0;
@@ -403,6 +460,7 @@ function floorMark(x, z, r, y) {
   scene.add(m);
 }
 
+
 //the time in hacktime is mostly finding values
 function buildMap() {
   let ground = new THREE.Mesh(new THREE.PlaneGeometry(140, 140), makeMat(texs.sand, 30, 30));
@@ -455,7 +513,7 @@ function buildMap() {
   
   addCrate(31, -20, 2.2, 1.1, 1.1);
   
-  addCrate(16, -18, 2.4);
+  addCrate(16, -18.8, 2.4, 1.1, 1.1);
   addCrate(24, -34, 2.4, 1.2);
   addCrate(24, -34, 1.6, 0.8, 1.2);
   addCrate(14, -40, 2.2);
@@ -506,9 +564,40 @@ function buildMap() {
   addCrate(-30, 36, 2.2);
   addCrate(-2, 34, 1.3, 1.3);
 
+  //nov 18 update market row down 
+  addStall(-20, 42.5);
+  addStall(-12.5, 42.5);
+  addStall(-5, 42.5);
+  addStall(2.5, 42.5);
+  addStall(10, 42.5);
+  addStall(17.5, 42.5);
+  
+  addWall(-6, 32, 2, 33.2, 1.1, 0, 'stone');
+  addWall(-26, 32, -20, 33.2, 1.1, 0, 'stone');
+  addWall(20, 32, 26, 33.2, 1.1, 0, 'stone');
+  addBarrel(-24.5, 41);
+  addBarrel(30.5, 41.5);
+  addBarrel(31.3, 40.7);
+  addBarrel(2, -42);
+  addBarrel(2.7, -41.2);
+  addBarrel(-12.5, -41);
+  addBarrel(-11.7, -40.2);
+  addBarrel(20, -42);
+  addBarrel(-41, 16);
+  addBarrel(-40.2, 16.8);
+  addBarrel(-41, -30);
+  addBarrel(-40.2, -29.2);
+  addBarrel(42.5, 28);
+  addBarrel(41.8, 28.8);
+  addBarrel(40, -36, 1.1);
+  addBarrel(31, -38, 1.1);
+  addBarrel(-33, -24, 0.9);
+  addCrate(-42, -38, 2.2);
+  addCrate(-41, 24, 2.0);
+
   let peb = new THREE.MeshStandardMaterial({ color: 0x8d887c, roughness: 1 });
   let pebGeo = new THREE.BoxGeometry(0.25, 0.14, 0.25);
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 55; i++) {
     let x = (Math.random() - 0.5) * 84;
     let z = (Math.random() - 0.5) * 84;
     if (floorAt(x, z, 10) !== 0 || hitsWall(x, z, 0, 0.2)) continue;
@@ -518,7 +607,7 @@ function buildMap() {
     p.castShadow = true;
     scene.add(p);}
 
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < 13; i++) {
     let x = (Math.random() - 0.5) * 80;
     let z = (Math.random() - 0.5) * 80;
     if (floorAt(x, z, 10) !== 0 || hitsWall(x, z, 0, 0.2)) continue;
@@ -531,7 +620,11 @@ function buildMap() {
 
 }
 
-buildMap();
+try {
+  buildMap();
+} catch (mapErr) {
+  console.log('map failed to build, uh oh: ' + mapErr);
+}
 
 function addLamp(x, y, z, i, d) {
   let l = new THREE.PointLight(0xffb066, i, d, 2);
@@ -542,6 +635,7 @@ addLamp(-39, 3.2, 12, 6, 16);
 addLamp(-39, 3.2, -4, 6, 16);
 addLamp(-29, 3.6, -30, 5, 20);
 addLamp(36, 3.6, -27, 4, 20);
+addLamp(0, 3.4, 40, 5, 18);
 
 
 let sfx = (function () {
@@ -567,7 +661,7 @@ let sfx = (function () {
     }
   }
 
-  //sounds ok to me -- ok will update next
+  //sounds ok to me  --tome --(Rs check your notebook)
   function hiss(freq, vol, dur) {
     if (!ctx) return;
     let t = ctx.currentTime;
