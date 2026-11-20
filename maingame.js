@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
-console.log('dustline loading... (sprint update)');
+console.log('dustline loading... (polish update)');
 
 function getById(id) {
   return document.getElementById(id);
@@ -195,7 +195,7 @@ function siteBoxTex(L) {
 
 let scene = new THREE.Scene();
 scene.background = texs.sky;
-scene.fog = new THREE.Fog(0xd8cfb4, 60, 210);
+scene.fog = new THREE.Fog(0xd8cfb4, 70, 240);
 
 let camera = new THREE.PerspectiveCamera(74, innerWidth / innerHeight, 0.05, 400);
 let camRig = new THREE.Group();
@@ -221,21 +221,25 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   let controls = new PointerLockControls(camera, renderer.domElement);
 
- scene.add(new THREE.HemisphereLight(0xbfd6ea, 0x9a8a68, 0.9));
+ scene.add(new THREE.HemisphereLight(0xbfd6ea, 0x9a8a68, 0.95));
 
-let sun = new THREE.DirectionalLight(0xffeecf, 2.3);
+let sun = new THREE.DirectionalLight(0xffeecf, 2.4);
 sun.position.set(55, 85, -25);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.left = -85;
-sun.shadow.camera.right = 85;
-sun.shadow.camera.top = 85;
-sun.shadow.camera.bottom = -85;
+sun.shadow.camera.left = -60;
+sun.shadow.camera.right = 60;
+sun.shadow.camera.top = 60;
+sun.shadow.camera.bottom = -60;
 sun.shadow.camera.near = 1;
-sun.shadow.camera.far = 260;
+sun.shadow.camera.far = 240;
 sun.shadow.bias = -0.0004;
 sun.shadow.normalBias = 0.02;
 scene.add(sun);
+
+let shadowTarget = new THREE.Object3D();
+scene.add(shadowTarget);
+sun.target = shadowTarget;
 
 let tmpVec = new THREE.Vector3();
 let fwd = new THREE.Vector3();
@@ -245,6 +249,44 @@ let tmpQuat = new THREE.Quaternion();
 
 let wallList = [];
 
+let wallGrid = {};
+let gridBuilt = false;
+let nearTmp = [];
+let GRID = 8;
+
+function buildWallGrid() {
+  wallGrid = {};
+  for (let i = 0; i < wallList.length; i++) {
+    let w = wallList[i];
+    let cx0 = Math.floor(w.x0 / GRID);
+    let cx1 = Math.floor(w.x1 / GRID);
+    let cz0 = Math.floor(w.z0 / GRID);
+    let cz1 = Math.floor(w.z1 / GRID);
+    for (let cx = cx0; cx <= cx1; cx++) {
+      for (let cz = cz0; cz <= cz1; cz++) {
+        let k = cx + '_' + cz;
+        if (!wallGrid[k]) wallGrid[k] = [];
+        wallGrid[k].push(i);
+      }
+    }
+  }
+  gridBuilt = true;
+}
+
+function wallsNear(x, z) {
+  if (!gridBuilt) return wallList;
+  let cx = Math.floor(x / GRID);
+  let cz = Math.floor(z / GRID);
+  nearTmp.length = 0;
+  for (let i = -1; i <= 1; i++) {
+    for (let j = -1; j <= 1; j++) {
+      let a = wallGrid[(cx + i) + '_' + (cz + j)];
+      if (a) for (let q = 0; q < a.length; q++) nearTmp.push(wallList[a[q]]);
+    }
+  }
+  return nearTmp;
+}
+
 function rampHeight(w, x, z) {
   let p = w.ramp.ax === 'x' ? x : z;
   let t = clamp((p - w.ramp.a0) / (w.ramp.a1 - w.ramp.a0), 0, 1);
@@ -253,8 +295,9 @@ function rampHeight(w, x, z) {
 
 function hitsWall(x, z, feetY, h) {
   let R = 0.4;
-  for (let i = 0; i < wallList.length; i++) {
-    let w = wallList[i];
+  let near = wallsNear(x, z);
+  for (let i = 0; i < near.length; i++) {
+    let w = near[i];
     if (x + R > w.x0 && x - R < w.x1 && z + R > w.z0 && z - R < w.z1) {
       let top = w.ramp ? rampHeight(w, x, z) : w.y1;
       if (top > feetY + 0.55 && w.y0 < feetY + h) return true;
@@ -265,8 +308,9 @@ function hitsWall(x, z, feetY, h) {
 
 function floorAt(x, z, feetY) {
   let g = 0;
-  for (let i = 0; i < wallList.length; i++) {
-    let w = wallList[i];
+  let near = wallsNear(x, z);
+  for (let i = 0; i < near.length; i++) {
+    let w = near[i];
     if (x + 0.35 > w.x0 && x - 0.35 < w.x1 && z + 0.35 > w.z0 && z - 0.35 < w.z1) {
       let top = w.ramp ? rampHeight(w, x, z) : w.y1;
       if (top <= feetY + 0.55 && top > g) g = top;
@@ -641,7 +685,7 @@ function buildMap() {
   addCrate(-42, -38, 2.2);
   addCrate(-41, 24, 2.0);
 
-  //car in veryyyy wrong ok so change it later but fix it!!!
+  //ok done! still same tho
   addCar(38, 4, false);
   addCar(-3, 18, false);
   addBarrel(41, 2);
@@ -681,18 +725,91 @@ try {
   console.log('map failed to build, uh oh: ' + mapErr);
 }
 
-function addLamp(x, y, z, i, d) {
+let ironMat = new THREE.MeshStandardMaterial({ color: 0x2a2622, roughness: 0.7, metalness: 0.5 });
+let bulbMat = new THREE.MeshBasicMaterial({ color: 0xffc98a });
+
+function addLamp(x, y, z, i, d, gy) {
+  if (gy === undefined) gy = 0;
+  let poleH = y - gy;
+  let pole = new THREE.Mesh(new THREE.BoxGeometry(0.11, poleH, 0.11), ironMat);
+  pole.position.set(x, gy + poleH / 2, z);
+  pole.castShadow = true;
+  scene.add(pole);
+  let arm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.55), ironMat);
+  arm.position.set(x, y + 0.22, z + 0.24);
+  scene.add(arm);
+  let hood = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.12, 0.34), ironMat);
+  hood.position.set(x, y + 0.14, z + 0.45);
+  hood.castShadow = true;
+  scene.add(hood);
+  let bulb = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.12, 0.2), bulbMat);
+  bulb.position.set(x, y + 0.04, z + 0.45);
+  scene.add(bulb);
   let l = new THREE.PointLight(0xffb066, i, d, 2);
-  l.position.set(x, y, z);
+  l.position.set(x, y, z + 0.45);
   scene.add(l);
 }
 addLamp(-39, 3.2, 12, 6, 16);
 addLamp(-39, 3.2, -4, 6, 16);
-addLamp(-29, 3.6, -30, 5, 20);
-addLamp(36, 3.6, -27, 4, 20);
+addLamp(-29, 3.6, -30, 5, 20, 0.9);
+addLamp(36, 3.6, -27, 4, 20, 1.1);
 addLamp(0, 3.4, 40, 5, 18);
 addLamp(39, 3.2, 24, 5, 16);
 addLamp(0, 3.4, -34, 4, 16);
+buildWallGrid();
+
+let cloudMat = new THREE.MeshBasicMaterial({ color: 0xf6f4ee, transparent: true, opacity: 0.85, fog: false, depthWrite: false });
+let clouds = [];
+for (let i = 0; i < 9; i++) {
+  let g = new THREE.Group();
+  let n = 3 + (Math.random() * 3 | 0);
+  for (let j = 0; j < n; j++) {
+    let s = 5 + Math.random() * 9;
+    let b = new THREE.Mesh(new THREE.SphereGeometry(s, 7, 5), cloudMat);
+    b.position.set((Math.random() - 0.5) * 16, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 8);
+    b.scale.y = 0.45;
+    g.add(b);
+  }
+  g.position.set((Math.random() - 0.5) * 300, 62 + Math.random() * 26, (Math.random() - 0.5) * 300);
+  scene.add(g);
+  clouds.push({ g: g, v: 0.55 + Math.random() * 0.8 });
+}
+
+function stepClouds(dt) {
+  for (let i = 0; i < clouds.length; i++) {
+    let c = clouds[i];
+    c.g.position.x += c.v * dt;
+    if (c.g.position.x > 190) c.g.position.x = -190;
+  }
+}
+
+let birdMat = new THREE.MeshBasicMaterial({ color: 0x3a3226, transparent: true, opacity: 0.8, fog: false, side: THREE.DoubleSide });
+let birds = [];
+for (let i = 0; i < 7; i++) {
+  let b = new THREE.Group();
+  let wL = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.32), birdMat);
+  wL.position.x = -0.5;
+  b.add(wL);
+  let wR = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.32), birdMat);
+  wR.position.x = 0.5;
+  b.add(wR);
+  b.userData = { wL: wL, wR: wR, a: Math.random() * 6.28, r: 40 + Math.random() * 50, sp: 0.4 + Math.random() * 0.3, h: 34 + Math.random() * 18 };
+  scene.add(b);
+  birds.push(b);
+}
+
+function stepBirds(dt, t) {
+  for (let i = 0; i < birds.length; i++) {
+    let b = birds[i];
+    let u = b.userData;
+    u.a += u.sp * dt;
+    b.position.set(Math.cos(u.a) * u.r, u.h + Math.sin(t * 0.7 + i) * 1.6, Math.sin(u.a) * u.r);
+    b.rotation.y = -u.a + Math.PI / 2;
+    let fl = Math.sin(t * 9 + i * 2);
+    u.wL.rotation.z = fl * 0.55;
+    u.wR.rotation.z = -fl * 0.55;
+  }
+}
 
 
 let sfx = (function () {
@@ -742,8 +859,153 @@ let sfx = (function () {
     boot: boot,
     step: function () { hiss(300 + Math.random() * 150, 0.09, 0.07); },
     land: function () { hiss(240, 0.2, 0.1); },
-    slide: function () { hiss(150, 0.22, 0.6); }
+    slide: function () { hiss(150, 0.22, 0.6); },
+    jump: function () { hiss(520, 0.1, 0.12); },
+    thump: function () { hiss(110, 0.3, 0.16); },
+    skid: function () { hiss(420, 0.12, 0.45); }
   };
+})();
+
+
+let puffTex = makeTex(64, (g, s) => {
+  let gr = g.createRadialGradient(s / 2, s / 2, 2, s / 2, s / 2, s / 2);
+  gr.addColorStop(0, 'rgba(214,196,160,0.85)');
+  gr.addColorStop(0.6, 'rgba(204,186,150,0.45)');
+  gr.addColorStop(1, 'rgba(204,186,150,0)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, s, s);
+});
+
+let dustPool = [];
+for (let i = 0; i < 40; i++) {
+  let m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: puffTex, transparent: true, opacity: 0, depthWrite: false }));
+  m.visible = false;
+  scene.add(m);
+  dustPool.push({ m: m, life: 0, max: 1, vx: 0, vy: 0, vz: 0, s: 1, rot: 0, spin: 0 });
+}
+
+function puffDust(x, y, z, howMany, burst) {
+  for (let i = 0; i < howMany; i++) {
+    let d = null;
+    for (let q = 0; q < dustPool.length; q++) {
+      if (dustPool[q].life <= 0) { d = dustPool[q]; break; }
+    }
+    if (!d) return;
+    d.life = burst ? 0.9 + Math.random() * 0.5 : 0.6 + Math.random() * 0.4;
+    d.max = d.life;
+    d.m.visible = true;
+    d.m.position.set(x + (Math.random() - 0.5) * 0.5, y + 0.05 + Math.random() * 0.3, z + (Math.random() - 0.5) * 0.5);
+    d.vx = (Math.random() - 0.5) * (burst ? 2.6 : 1.2);
+    d.vy = Math.random() * (burst ? 1.6 : 0.7);
+    d.vz = (Math.random() - 0.5) * (burst ? 2.6 : 1.2);
+    d.s = 0.45 + Math.random() * (burst ? 0.8 : 0.5);
+    d.rot = Math.random() * 6.28;
+    d.spin = (Math.random() - 0.5) * 3;
+  }
+}
+
+function stepDust(dt) {
+  camera.getWorldQuaternion(tmpQuat);
+  for (let i = 0; i < dustPool.length; i++) {
+    let d = dustPool[i];
+    if (d.life <= 0) continue;
+    d.life -= dt;
+    if (d.life <= 0) {
+      d.m.visible = false;
+      continue;
+    }
+    d.m.position.x += d.vx * dt;
+    d.m.position.y += d.vy * dt;
+    d.m.position.z += d.vz * dt;
+    d.vy *= 0.94;
+    d.vx *= 0.985;
+    d.vz *= 0.985;
+    d.s += dt * 1.1;
+    d.rot += d.spin * dt;
+    d.m.scale.set(d.s, d.s, 1);
+    d.m.material.opacity = (d.life / d.max) * 0.75;
+    d.m.quaternion.copy(tmpQuat);
+    d.m.rotateZ(d.rot);
+  }
+}
+
+let skidPool = [];
+let skidMat = new THREE.MeshBasicMaterial({ color: 0x3a2f1e, transparent: true, opacity: 0, depthWrite: false });
+let skidGeo = new THREE.PlaneGeometry(0.55, 1.5);
+for (let i = 0; i < 10; i++) {
+  let sm = new THREE.Mesh(skidGeo, skidMat.clone());
+  sm.visible = false;
+  scene.add(sm);
+  skidPool.push({ m: sm, life: 0 });
+}
+
+function dropSkid(x, y, z, heading) {
+  for (let i = 0; i < skidPool.length; i++) {
+    let s = skidPool[i];
+    if (s.life > 0) continue;
+    s.life = 2.4;
+    s.m.visible = true;
+    s.m.position.set(x, y + 0.03, z);
+    s.m.rotation.set(-Math.PI / 2, 0, 0);
+    s.m.rotateZ(heading);
+    s.m.material.opacity = 0.28;
+    return;
+  }
+}
+
+function stepSkids(dt) {
+  for (let i = 0; i < skidPool.length; i++) {
+    let s = skidPool[i];
+    if (s.life <= 0) continue;
+    s.life -= dt;
+    if (s.life <= 0) {
+      s.m.visible = false;
+      continue;
+    }
+    s.m.material.opacity = Math.min(0.28, s.life * 0.16);
+  }
+}
+
+let dustFx = document.createElement('div');
+dustFx.style.cssText = 'position:fixed;inset:0;pointer-events:none;opacity:0;z-index:5;background:' +
+  'radial-gradient(circle at 18% 26%, rgba(208,188,152,0.95) 0 7%, transparent 15%),' +
+  'radial-gradient(circle at 80% 32%, rgba(198,178,142,0.9) 0 6%, transparent 13%),' +
+  'radial-gradient(circle at 54% 58%, rgba(212,192,158,0.8) 0 8%, transparent 17%),' +
+  'radial-gradient(circle at 28% 76%, rgba(202,182,146,0.85) 0 7%, transparent 15%),' +
+  'radial-gradient(circle at 66% 10%, rgba(192,172,138,0.75) 0 5%, transparent 11%),' +
+  'radial-gradient(circle at 40% 48%, rgba(215,200,170,0.5) 0 9%, transparent 19%),' +
+  'radial-gradient(ellipse at 50% 50%, rgba(222,208,178,0.42) 0 60%, transparent 80%)';
+document.body.appendChild(dustFx);
+
+let filmFx = document.createElement('div');
+filmFx.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:4;' +
+  'background:radial-gradient(ellipse at 50% 46%, rgba(0,0,0,0) 55%, rgba(18,10,4,0.28) 100%);';
+document.body.appendChild(filmFx);
+let grainFx = document.createElement('div');
+grainFx.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:4;opacity:0.05;' +
+  "background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E\");";
+document.body.appendChild(grainFx);
+
+let speedFx = document.createElement('div');
+speedFx.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:4;opacity:0;' +
+  'background:linear-gradient(90deg, rgba(230,218,188,0.65) 0%, rgba(230,218,188,0) 17%, rgba(230,218,188,0) 83%, rgba(230,218,188,0.65) 100%);' +
+  '-webkit-mask:linear-gradient(0deg, rgba(0,0,0,0.85), rgba(0,0,0,0.12) 30%, rgba(0,0,0,0.12) 70%, rgba(0,0,0,0.85));' +
+  'mask:linear-gradient(0deg, rgba(0,0,0,0.85), rgba(0,0,0,0.12) 30%, rgba(0,0,0,0.12) 70%, rgba(0,0,0,0.85));';
+document.body.appendChild(speedFx);
+
+let wipeArm = (function () {
+  let g = new THREE.Group();
+  let sleeveMat = new THREE.MeshStandardMaterial({ color: 0x3d4450, roughness: 0.9, side: THREE.DoubleSide });
+  let forearm = new THREE.Mesh(new THREE.PlaneGeometry(1.05, 0.17), sleeveMat);
+  forearm.position.x = 0.45;
+  g.add(forearm);
+  let handMat = new THREE.MeshStandardMaterial({ color: 0xb08d64, roughness: 0.85 });
+  let hand = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.06, 0.2), handMat);
+  hand.position.set(1.0, 0, 0.02);
+  g.add(hand);
+  g.visible = false;
+  camera.add(g);
+  return g;
 })();
 
 
@@ -759,6 +1021,8 @@ let me = {
   sliding: false,
   slideT: 0,
   slideCd: 0,
+  coyote: 0,
+  jumpBuf: 0,
   squash: 1
 };
 
@@ -770,6 +1034,15 @@ let started   = false;
 let tilt = 0;
 
 let landDip = 0;
+let slideLean = 0;
+let slideKick = 0;
+let dustAmt = 0;
+let wipeT = -1;
+let wipeDelay = 0;
+let wipeSway = 0;
+let dustSpawnT = 0;
+let skidSpawnT = 0;
+let worldT = 0;
 
 let myLegs = (function () {
   let g = new THREE.Group();
@@ -814,6 +1087,59 @@ let myLegs = (function () {
 
   return { g: g, leftLeg: leftLeg, rightLeg: rightLeg };
 })();
+
+let myArms = (function () {
+  let g = new THREE.Group();
+
+  let sleeveMat = new THREE.MeshStandardMaterial({ color: 0x3d4450, roughness: 0.9 });
+  let handMat = new THREE.MeshStandardMaterial({ color: 0xb08d64, roughness: 0.85 });
+
+  function makeArm(sideX) {
+    let piv = new THREE.Group();
+    piv.position.set(sideX, 1.32, 0.02);
+    let arm = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.11, 0.5), sleeveMat);
+    arm.position.z = 0.22;
+    arm.castShadow = true;
+    piv.add(arm);
+    let hand = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.14), handMat);
+    hand.position.set(0, -0.015, 0.5);
+    piv.add(hand);
+    g.add(piv);
+    return piv;
+  }
+
+  let armL = makeArm(-0.27);
+  let armR = makeArm(0.27);
+
+  camRig.add(g);
+
+  return { g: g, armL: armL, armR: armR };
+})();
+
+function updateDustFx(dt) {
+  if (!me.sliding) dustAmt = Math.max(0, dustAmt - dt * 0.5);
+  dustFx.style.opacity = (dustAmt * 0.85).toFixed(3);
+  if (wipeDelay > 0) {
+    wipeDelay -= dt;
+    if (wipeDelay <= 0) {
+      wipeT = 0.45;
+      wipeArm.visible = true;
+    }
+  }
+  if (wipeT >= 0) {
+    wipeT -= dt;
+    let u = 1 - Math.max(0, wipeT) / 0.45;
+    wipeArm.position.set(0.62 - u * 1.3, -0.52 + Math.sin(u * Math.PI) * 0.22, -0.55);
+    wipeArm.rotation.set(-0.25, -0.15, 0.5 - u * 1.3);
+    wipeSway = Math.sin(u * Math.PI) * 0.045;
+    if (wipeT <= 0) {
+      wipeT = -1;
+      wipeSway = 0;
+      wipeArm.visible = false;
+      dustAmt *= 0.12;
+    }
+  }
+}
 
 
 function movePlayer(dt) {
@@ -860,10 +1186,15 @@ function movePlayer(dt) {
     me.slideCd = 1.4;
     me.vel.x *= 1.18;
     me.vel.z *= 1.18;
+    slideKick = 0.085;
     sfx.slide();
+    puffDust(me.pos.x, me.pos.y, me.pos.z, 10, true);
+    wipeT = -1;
+    wipeDelay = 0;
+    wipeArm.visible = false;
   }
 
-  //slide is just crouch while sprinting, boost + fade so it feels slidey
+  //needs 3rd hand fixing
   if (me.sliding) {
     me.slideT -= dt;
     let keep = Math.exp(-1.4 * dt);
@@ -874,6 +1205,20 @@ function movePlayer(dt) {
     let hs = Math.hypot(me.vel.x, me.vel.z);
     if (me.slideT <= 0 || !me.crouch || hs < 3.2 || !me.onFloor) {
       me.sliding = false;
+      if (me.onFloor) landDip = -0.05;
+      if (dustAmt > 0.25) wipeDelay = 0.4;
+    } else {
+      dustAmt = Math.min(1, dustAmt + dt * 2.4);
+      dustSpawnT += dt;
+      if (dustSpawnT > 0.04) {
+        dustSpawnT = 0;
+        puffDust(me.pos.x - me.vel.x * 0.14, me.pos.y, me.pos.z - me.vel.z * 0.14, 2, false);
+      }
+      skidSpawnT += dt;
+      if (skidSpawnT > 0.12) {
+        skidSpawnT = 0;
+        dropSkid(me.pos.x, me.pos.y, me.pos.z, Math.atan2(-me.vel.x, -me.vel.z));
+      }
     }
   } else {
     let push = me.onFloor ? 12 : 2.5;
@@ -882,9 +1227,15 @@ function movePlayer(dt) {
     me.vel.z += (wish.z - me.vel.z) * k;
   }
 
-  if (keysDown.Space && me.onFloor) {
+  if (me.onFloor) me.coyote = 0.1; else me.coyote -= dt;
+  if (keysDown.Space) me.jumpBuf = 0.13; else me.jumpBuf -= dt;
+  if (me.jumpBuf > 0 && me.coyote > 0) {
     me.vy = 5.9;
     me.onFloor = false;
+    me.coyote = 0;
+    me.jumpBuf = 0;
+    sfx.jump();
+    puffDust(me.pos.x, me.pos.y, me.pos.z, 3, false);
   }
   me.vy -= 15 * dt;
 
@@ -909,7 +1260,9 @@ function movePlayer(dt) {
   if (me.pos.y <= gnd) {
     if (!me.onFloor && me.vy < -4) {
       sfx.land();
-      landDip = 0.1;
+      sfx.thump();
+      landDip = Math.min(0.24, 0.08 + (-me.vy - 6) * 0.022);
+      puffDust(me.pos.x, gnd, me.pos.z, 7, true);
     }
     me.pos.y = gnd;
     me.vy = 0;
@@ -921,46 +1274,89 @@ function movePlayer(dt) {
   camRig.position.copy(me.pos);
 
   let eyeWant = me.sliding ? 0.8 : (me.crouch ? 1.15 : 1.62);
-  me.eyeY += (eyeWant - me.eyeY) * (1 - Math.exp(-10 * dt));
+  me.eyeY += (eyeWant - me.eyeY) * (1 - Math.exp(-(me.sliding ? 16 : 10) * dt));
 
   let squashWant = me.sliding ? 0.55 : (me.crouch ? 0.8 : 1);
   me.squash += (squashWant - me.squash) * (1 - Math.exp(-10 * dt));
   myLegs.g.scale.y = me.squash;
 
-  let fovWant = me.sliding ? 83 : (sprintHeld && iz > 0 ? 79 : 74);
-  camera.fov += (fovWant - camera.fov) * (1 - Math.exp(-6 * dt));
+  let hspd = Math.hypot(me.vel.x, me.vel.z);
+  let runF = Math.min(1, hspd / 7.9);
+  let fovWant = 74 + clamp((hspd - 5.4) * 1.1, 0, 5) + (me.sliding ? clamp((hspd - 6) * 1.8, 3, 9) : 0) - (wipeT >= 0 ? 1.2 : 0);
+  camera.fov += (fovWant - camera.fov) * (1 - Math.exp(-7 * dt));
   camera.updateProjectionMatrix();
 
-  let hspd = Math.hypot(me.vel.x, me.vel.z);
   let bobOff = 0;
   if (me.onFloor && hspd > 0.5) {
     me.bob += dt * hspd * 1.75;
     bobOff = Math.sin(me.bob * 2) * 0.02 * Math.min(1, hspd / 5.4);
   }
   landDip = landDip * Math.exp(-8 * dt);
-  camera.position.y = me.eyeY + bobOff - landDip;
+  let shk = me.sliding ? Math.min(1, hspd / 9) : 0;
+  camera.position.y = me.eyeY + bobOff - landDip + Math.sin(worldT * 43) * 0.006 * shk;
+  camera.position.x = Math.sin(me.bob) * 0.014 * runF + Math.cos(worldT * 31) * 0.004 * shk;
 
   tilt = lerp(tilt, -ix * 0.012, 1 - Math.exp(-8 * dt));
-  camRig.rotation.set(0, Math.PI, tilt);
+  let leanTgt = 0;
+  if (me.sliding) {
+    let su = 1 - me.slideT / 0.85;
+    leanTgt = 0.21 * Math.min(1, su * 4.5) * Math.min(1, me.slideT / 0.26);
+  }
+  slideLean = lerp(slideLean, leanTgt, 1 - Math.exp(-14 * dt));
+  slideKick = slideKick * Math.exp(-5 * dt);
+  camRig.rotation.set(slideKick, Math.PI, tilt + slideLean + Math.sin(me.bob) * 0.007 * runF + Math.sin(worldT * 37) * 0.016 * shk + wipeSway);
+  speedFx.style.opacity = clamp((hspd - 7.6) / 4.2, 0, 0.45).toFixed(3);
 
   me.walkAcc += hspd * dt;
   if (me.walkAcc > 2.6 && me.onFloor) {
     me.walkAcc = 0;
-    if (!me.crouch && !me.sliding) sfx.step();
+    if (!me.crouch && !me.sliding) {
+      sfx.step();
+      if (hspd > 7) puffDust(me.pos.x, me.pos.y, me.pos.z, 1, false);
+    }
   }
-
-  //legs turn with the camera this took me way too long to figre out
+  //done!
   camera.getWorldDirection(tmpVec);
-  myLegs.g.rotation.set(0, Math.atan2(tmpVec.x, tmpVec.z) - camRig.rotation.y, 0);
+  let bodyYaw = Math.atan2(tmpVec.x, tmpVec.z) - camRig.rotation.y;
+  myLegs.g.rotation.set(0, bodyYaw, 0);
+  myArms.g.rotation.set(0, bodyYaw, 0);
+  let ph = me.bob * 2;
   let swing = Math.min(1, hspd / 5.4);
-  myLegs.leftLeg.rotation.x = Math.sin(me.bob * 2) * 0.6 * swing;
-  myLegs.rightLeg.rotation.x = -Math.sin(me.bob * 2) * 0.6 * swing;
+  if (me.sliding) {
+    let su = 1 - me.slideT / 0.85;
+    let vib = Math.sin(worldT * 40) * 0.03 * shk;
+    myLegs.leftLeg.rotation.x = -1.02 + 0.1 * su + vib;
+    myLegs.rightLeg.rotation.x = -0.8 - 0.12 * su - vib;
+    myLegs.leftLeg.rotation.z = 0.12;
+    myLegs.rightLeg.rotation.z = -0.12;
+    myArms.armL.rotation.x = 0.5 + 0.15 * su + vib * 0.6;
+    myArms.armR.rotation.x = -0.4 - 0.12 * su - vib * 0.6;
+  } else if (!me.onFloor) {
+    let goingUp = me.vy > 0;
+    myLegs.leftLeg.rotation.x = goingUp ? -0.55 : -0.2;
+    myLegs.rightLeg.rotation.x = goingUp ? -0.15 : 0.15;
+    myLegs.leftLeg.rotation.z = 0;
+    myLegs.rightLeg.rotation.z = 0;
+    myArms.armL.rotation.x = goingUp ? -0.5 : 0.35;
+    myArms.armR.rotation.x = goingUp ? -0.5 : 0.35;
+  } else {
+    let l = Math.sin(ph);
+    myLegs.leftLeg.rotation.x = l * 0.6 * swing;
+    myLegs.rightLeg.rotation.x = -l * 0.6 * swing;
+    myLegs.leftLeg.rotation.z = 0;
+    myLegs.rightLeg.rotation.z = 0;
+    myArms.armL.rotation.x = -l * 0.45 * swing;
+    myArms.armR.rotation.x = l * 0.45 * swing;
+  }
 }
 
 
 addEventListener('keydown', function (e) {
   if (e.code === 'Space') e.preventDefault();
   keysDown[e.code] = true;
+  if (e.code === 'KeyR' && wipeT < 0 && wipeDelay <= 0) {
+    wipeDelay = 0.12;
+  }
   if (e.code === 'Enter' && !controls.isLocked) {
     sfx.boot();
     controls.lock();
@@ -1017,10 +1413,31 @@ let gameClock = new THREE.Clock();
 function gameLoop() {
   requestAnimationFrame(gameLoop);
   let dt = Math.min(gameClock.getDelta(), 0.05);
+  worldT += dt;
   if (controls.isLocked && !isPaused) {
     movePlayer(dt);
   }
+  stepDust(dt);
+  stepSkids(dt);
+  updateDustFx(dt);
+  stepClouds(dt);
+  stepBirds(dt, worldT);
+  let shx = Math.round(me.pos.x / 2) * 2;
+  let shz = Math.round(me.pos.z / 2) * 2;
+  shadowTarget.position.set(shx, 0, shz);
+  sun.position.set(shx + 55, 85, shz - 25);
   renderer.render(scene, camera);
 }
 
 gameLoop();
+
+window.dl = {
+  renderer: renderer, scene: scene, camera: camera, camRig: camRig, me: me,
+  controls: controls, wallList: wallList, floorAt: floorAt, hitsWall: hitsWall,
+  sun: sun, shadowTarget: shadowTarget, wipeArm: wipeArm,
+  dustAmt: function () { return dustAmt; },
+  key: function (c, d) { keysDown[c] = d; },
+  wipeNow: function () { if (wipeT < 0 && wipeDelay <= 0) wipeDelay = 0.1; },
+  tick: function (dt) { movePlayer(dt); stepDust(dt); stepSkids(dt); updateDustFx(dt); },
+  isOn: function () { return controls.isLocked && !isPaused; }
+};
